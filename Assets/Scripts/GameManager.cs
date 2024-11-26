@@ -47,7 +47,7 @@ public class GameManager : MonoBehaviour
         // Set up the treenum variable, so each tree knows where is is
         for (int i = 0; i < allRoots.Length; i++)
         {
-            allRoots[i].treeNum = i;
+            allRoots[i].treeIndex = i;
         }
     }
 
@@ -84,7 +84,7 @@ public class GameManager : MonoBehaviour
                 if (currentName != "1") // don't check empty branches against empty roots, that's just silly.
                 {
                     //foreach (string s in rootNames)
-                    for (int i = 0; i < check_b.treeNum; i++) // Check all PREVIOUS roots
+                    for (int i = 0; i < check_b.treeIndex; i++) // Check all PREVIOUS roots
                     {
                         if (rootNames[i] == "1")
                         {

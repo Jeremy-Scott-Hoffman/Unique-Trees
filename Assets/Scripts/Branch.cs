@@ -12,12 +12,17 @@ public class Branch : MonoBehaviour
 {
     [SerializeField] Sprite normalBranch;
     [SerializeField] Sprite dupeBranch;
+    [SerializeField] Sprite dupeBranch_child;
     [SerializeField] Image branchImage;
     public Branch branchPrefab;
     int depth = 1;// Depth 1 = root, 2 = child, 3 = grandchild, etc
     public int index;// Where is this in the child array? What angle is it branching at?
-    public int treeNum;// Which tree is this part of? (currently: matches rootName[] index, e.g. 0, 1, 2, ...)
-                       // To do: Make this match the tree's size maybe?
+    public int treeIndex;// Which tree is this part of? (currently: matches rootName[] index, e.g. 0, 1, 2, ...)
+                         // To do: Make this match the tree's size maybe?
+    public int treeGoalSize
+    {
+        get { return treeIndex + 3; } //Can change this to +4 reduce game difficulty
+    }
     public int children = 0;
     /*{   //= 0;
         get { return childBranches.Count; }
@@ -29,7 +34,8 @@ public class Branch : MonoBehaviour
     public string displayName;// no brackets, e.g.  1,2,(1,1)
 
     public Branch parent;
-    public Branch root;
+    public Branch root; // Controls some of the game logic
+    public Tree tree; // Mostly controls the UI and stuff.
     [SerializeField] Branch[] _childArray = new Branch[MAX_CHILDREN];//lists children by their position. Can be empty!
     [SerializeField]
     Branch[] childArray // Don't use this for game logic, it has empty spaces!
@@ -95,6 +101,11 @@ public class Branch : MonoBehaviour
         Debug.LogError("children full");
     }
 
+    public struct SolutionBranch
+    {
+        int childIndex;
+        SolutionBranch[] solutionBranches; // e.g. possible solution =    [ 0,   2[1,0],  1[3,1[1,0]]];
+    }
 
     // to-do: THIS IS tHE BIG ONE!!!!     FIND THE SUBTREE!!!!!!
     //PUBLIC INT[]?
@@ -145,7 +156,7 @@ public class Branch : MonoBehaviour
                     return false; // To-Do: add backtracking!
                 else //backtrack
                 {
-                    solution[sc] = 0;
+                    solution[sc] = -1;
                     sc--;
                     //backTracking = true;
                     //next_c = solution[sc] + 1;
@@ -308,15 +319,21 @@ public class Branch : MonoBehaviour
         newBranch.depth = this.depth + 1;
         newBranch.root = this.root;//children share same root as parent (een if parent IS root)
         newBranch.parent = this;
-        newBranch.treeNum = this.treeNum;
+        newBranch.treeIndex = this.treeIndex;
         //childArray[child_index] = newBranch;//childBranches.Add(newBranch);
         newBranch.name = "child " + depth + "-" + index;
         //UpdateChildBranches(); // <-- this is in the AddChild function
         //print("WAS: " + newBranch.GetComponent<Branch>().branchPrefab.name);
         newBranch.GetComponent<Branch>().branchPrefab = branchPrefab; // This removes the recursion bug.
+        UpdateStuff();
 
+    }
+
+    public void UpdateStuff()
+    {
         root.UpdateName();
         GameManager.instance.FindDuplicates();
+        root.tree?.UpdateInfo();
     }
 
     public void UpdateName()

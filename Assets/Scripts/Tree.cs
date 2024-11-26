@@ -10,19 +10,23 @@ public class Tree : MonoBehaviour
     public Text numberText;
     public Text infoText;
     public int treeNumber;//this is probably the max size of the tree (3, 4, ...10)
+    public int TreeGoalSize()
+    {
+        return root.treeGoalSize;
+    }
     // Start is called before the first frame update
     void Start()
     {
-        numberText.text = "(" + treeNumber + ")";
+        numberText.text = "(" + TreeGoalSize() + ")";
     }
 
     // Update is called once per frame
-    void UpdateInfo()
+    public void UpdateInfo()
     {
         int treeSize = root.allSubBranches.Count;
-        if (treeSize > treeNumber)
+        if (treeSize > TreeGoalSize())
             infoText.text = "too large!";
-        else if (treeSize < treeNumber)
+        else if (treeSize < TreeGoalSize())
             infoText.text = "incomplete";
         else
         {
