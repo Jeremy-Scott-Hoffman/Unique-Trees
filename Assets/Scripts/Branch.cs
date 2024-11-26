@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+
 //using System.Numerics;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -12,7 +14,7 @@ public class Branch : MonoBehaviour
     [SerializeField] Sprite dupeBranch;
     [SerializeField] Image branchImage;
     public Branch branchPrefab;
-    int depth = 1;
+    int depth = 1;// Depth 1 = root, 2 = child, 3 = grandchild, etc
     public int index;// Where is this in the child array? What angle is it branching at?
     public int treeNum;// Which tree is this part of? (currently: matches rootName[] index, e.g. 0, 1, 2, ...)
                        // To do: Make this match the tree's size maybe?
@@ -29,7 +31,8 @@ public class Branch : MonoBehaviour
     public Branch parent;
     public Branch root;
     [SerializeField] Branch[] _childArray = new Branch[MAX_CHILDREN];//lists children by their position. Can be empty!
-    public Branch[] childArray
+    [SerializeField]
+    Branch[] childArray // Don't use this for game logic, it has empty spaces!
     {
         get { return _childArray; }
         set
@@ -95,35 +98,75 @@ public class Branch : MonoBehaviour
 
     // to-do: THIS IS tHE BIG ONE!!!!     FIND THE SUBTREE!!!!!!
     //PUBLIC INT[]?
-    public bool FindSubtree(Branch sub) // Check is sub is actually a subtree
+    public bool FindSubtree(Branch sub, int recursionLevel = 0) // Check is sub is actually a subtree
     {
         Debug.Assert(sub.children == sub.childBranches.Count);
         Debug.Assert(children == childBranches.Count);
-        int[] solution = new int[sub.children];//Which this.children correspond to each sub.child
 
-        int sc = 0;//sub_child
-        int loops = 0;
+        if (sub.children == 0)
+        {
+            //print("Trivial subset of " + treeNum);// + "." + branchName);
+            return true;
+        }
+
+        int[] solution = new int[sub.children];//Which this.children correspond to each sub.child
+        for (int i = 0; i < sub.children; i++)
+            solution[i] = -1;
+        int sc = 0;//index of solution (which sub.child we're looking at (to assign it a this.child))
+        int loops = 0;//emergency while() stopper
+        bool childfound;
+
         while (sc < sub.children && loops < 999)
         {
-            for (int c = 1; c < children; c++)
+            childfound = false;
+            int c = solution[sc];//The current this.child being tried (starts at 0 except when backtracking)
+            while (c + 1 < children)
             {
-                if (childArray[c].FindSubtree(sub.childArray[sc]))
+                c++;
+                //print("Check c =" + c);
+                if (solution.Contains(c))
                 {
+                    //Already used this child!
+                }
+                else if (childBranches[c].FindSubtree(sub.childBranches[sc], recursionLevel + 1))
+                {
+                    //print("c =" + c);
                     solution[sc] = c;
                     sc++;
-                    c = 999;//break;
+                    childfound = true;
+                    break;//c = 999;//
+                }
+
+                //c++;
+            }
+            if (!childfound)
+            {
+                if (sc == 0) // Tried all possiblities for the first value, so we're done
+                    return false; // To-Do: add backtracking!
+                else //backtrack
+                {
+                    solution[sc] = 0;
+                    sc--;
+                    //backTracking = true;
+                    //next_c = solution[sc] + 1;
                 }
             }
-            return false;
         }
-        print(String.Join(",", solution));
+        //if (solution?[0] != null)
+
         if (sc >= sub.children)
         {
+            if (recursionLevel == 0)//Don't print all the boring sub-solutions
+                print("Sol" + recursionLevel + ": " + String.Join(",", solution));
             //solution found?
             return true;
         }
         if (loops > 990)
             Debug.Log("infinite loop! breaking out");
+        else
+        {
+            print("huh? sc =" + sc + ", loops = " + loops);
+        }
         return false;
     }
 
@@ -251,7 +294,7 @@ public class Branch : MonoBehaviour
 
 
 
-        newBranch.gameObject.transform.localScale = Vector2.one * 0.7f;
+        newBranch.gameObject.transform.localScale = Vector2.one * 0.8f;
         newBranch.gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
 
         // ==== BUTTONS =====
@@ -273,6 +316,7 @@ public class Branch : MonoBehaviour
         newBranch.GetComponent<Branch>().branchPrefab = branchPrefab; // This removes the recursion bug.
 
         root.UpdateName();
+        GameManager.instance.FindDuplicates();
     }
 
     public void UpdateName()
@@ -292,6 +336,7 @@ public class Branch : MonoBehaviour
         UpdateChildBranches();
         //children--;
         root.UpdateName();
+        GameManager.instance.FindDuplicates();
         Destroy(child.gameObject);
     }
 

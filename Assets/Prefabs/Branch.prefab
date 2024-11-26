@@ -168,7 +168,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 31.43}
-  m_SizeDelta: {x: 23.21, y: 100}
+  m_SizeDelta: {x: 23.21, y: 80}
   m_Pivot: {x: 0.5, y: 0.02}
 --- !u!222 &2348752218689684241
 CanvasRenderer:
@@ -224,6 +224,7 @@ MonoBehaviour:
   branchImage: {fileID: 2348752218689684242}
   branchPrefab: {fileID: 3422936231179989542}
   index: 0
+  treeNum: 0
   children: 0
   growBranch: {fileID: 9154283029361458190}
   cutBranch: {fileID: 7102288558368717031}

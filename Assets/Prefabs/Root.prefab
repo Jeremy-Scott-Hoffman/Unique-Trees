@@ -168,8 +168,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 38, y: -172}
-  m_SizeDelta: {x: 23.21, y: 100}
+  m_AnchoredPosition: {x: 38, y: -172.27}
+  m_SizeDelta: {x: 23.21, y: 86.39221}
   m_Pivot: {x: 0.5, y: 0.02}
 --- !u!222 &2085543226039684648
 CanvasRenderer:
@@ -226,6 +226,7 @@ MonoBehaviour:
   branchPrefab: {fileID: 3422936231179989542, guid: 4735e5ce8c9c8564c87b509e5f160076,
     type: 3}
   index: 0
+  treeNum: 0
   children: 0
   growBranch: {fileID: 0}
   cutBranch: {fileID: 0}
