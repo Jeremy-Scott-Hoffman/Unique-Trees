@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 // Handles an entire tree panel.
-public class Tree : MonoBehaviour
+public class TreePanel : MonoBehaviour
 {
     public Branch root;
     public Text numberText;

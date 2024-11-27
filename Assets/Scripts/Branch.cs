@@ -10,13 +10,15 @@ using UnityEngine.UI;
 
 public class Branch : MonoBehaviour
 {
+    public static bool DEBUG_SHOW_LIST_INDEX = true; //nodes show their index in the child list
     [SerializeField] Sprite normalBranch;
     [SerializeField] Sprite dupeBranch;
     [SerializeField] Sprite dupeBranch_child;
     [SerializeField] Image branchImage;
     public Branch branchPrefab;
     int depth = 1;// Depth 1 = root, 2 = child, 3 = grandchild, etc
-    public int index;// Where is this in the child array? What angle is it branching at?
+    public int posIndex;// Where am I in my parent's child array? What angle am I branching at?
+    public int listIndex; // Where am I in my parent's list of children? (Used for dupe-finding solutions)
     public int treeIndex;// Which tree is this part of? (currently: matches rootName[] index, e.g. 0, 1, 2, ...)
                          // To do: Make this match the tree's size maybe?
     public int treeGoalSize
@@ -35,7 +37,7 @@ public class Branch : MonoBehaviour
 
     public Branch parent;
     public Branch root; // Controls some of the game logic
-    public Tree tree; // Mostly controls the UI and stuff.
+    public TreePanel tree; // Mostly controls the UI and stuff.
     [SerializeField] Branch[] _childArray = new Branch[MAX_CHILDREN];//lists children by their position. Can be empty!
     [SerializeField]
     Branch[] childArray // Don't use this for game logic, it has empty spaces!
@@ -64,10 +66,17 @@ public class Branch : MonoBehaviour
     public void UpdateChildBranches()
     {
         List<Branch> x = new List<Branch>();
+        int n = 0;
         for (int i = 0; i < MAX_CHILDREN; i++)
         {
             if (childArray[i] != null)
+            {
                 x.Add(childArray[i]);
+                childArray[i].listIndex = n;
+                if (DEBUG_SHOW_LIST_INDEX)
+                    childArray[i].growBranch.GetComponentInChildren<Text>().text = $"{n}";
+                n++;
+            }
         }
         children = x.Count;
         //Debug.Log("children: " + children);
@@ -93,7 +102,7 @@ public class Branch : MonoBehaviour
             if (childArray[i] == null)
             {
                 childArray[i] = c;
-                c.index = i;
+                c.posIndex = i;
                 UpdateChildBranches();
                 return;
             }
@@ -103,16 +112,65 @@ public class Branch : MonoBehaviour
 
     public struct SolutionBranch
     {
-        int childIndex;
-        SolutionBranch[] solutionBranches; // e.g. possible solution =    [ 0,   2[1,0],  1[3,1[1,0]]];
+        public bool isRoot;//is this the root of the solution? If so, should have no index?
+        public int index;// What number child am *I*?
+        public SolutionBranch[] children; // e.g. possible solution =    [ 0,   2[1,0],  1[3,1[1,0]]];
+
+        public SolutionBranch(int numChildren, bool _isRoot, int _index)
+        {
+            isRoot = _isRoot;
+            children = new SolutionBranch[numChildren];
+            index = _index;
+        }
+
+        public bool ContainsIndex(int n)
+        {
+            foreach (SolutionBranch child in children)
+            {
+                if (child.index == n)
+                    return true;
+            }
+            return false;
+        }
+
+        public String ToString(int recursionLevel = 0)
+        {
+            if (recursionLevel > MAX_DEPTH + 1)
+            {
+                Debug.LogError("infinite recursion: SolutionBranch contains itself? " + recursionLevel);
+                return "!!";
+            }
+
+            int ch = children.Count();
+            if (ch == 0)
+                return index.ToString();
+            else
+            {
+                String name = "";
+                for (int i = 0; i < ch; i++)
+                {
+                    name += (i > 0 ? "," : "") + children[i].ToString(recursionLevel + 1);
+                }
+                name = (!isRoot ? index + "" : "") + "[" + name + "]";
+
+                return name;
+            }
+        }
     }
 
     // to-do: THIS IS tHE BIG ONE!!!!     FIND THE SUBTREE!!!!!!
     //PUBLIC INT[]?
-    public bool FindSubtree(Branch sub, int recursionLevel = 0) // Check is sub is actually a subtree
+    public bool FindSubtree(Branch sub, out SolutionBranch solution, int recursionLevel = 0) // Check is sub is actually a subtree
     {
         Debug.Assert(sub.children == sub.childBranches.Count);
         Debug.Assert(children == childBranches.Count);
+
+        Predicate<Branch> sameBranch = (Branch b) => { return b.posIndex == this.posIndex; };
+
+        solution = new SolutionBranch(
+            sub.children,
+            (recursionLevel == 0),
+            listIndex);//parent.childBranches.FindIndex(sameBranch));// index=this.index???
 
         if (sub.children == 0)
         {
@@ -120,9 +178,10 @@ public class Branch : MonoBehaviour
             return true;
         }
 
-        int[] solution = new int[sub.children];//Which this.children correspond to each sub.child
+        //int[] solution = new int[sub.children];//Which this.children correspond to each sub.child
+
         for (int i = 0; i < sub.children; i++)
-            solution[i] = -1;
+            solution.children[i].index = -1;
         int sc = 0;//index of solution (which sub.child we're looking at (to assign it a this.child))
         int loops = 0;//emergency while() stopper
         bool childfound;
@@ -130,19 +189,31 @@ public class Branch : MonoBehaviour
         while (sc < sub.children && loops < 999)
         {
             childfound = false;
-            int c = solution[sc];//The current this.child being tried (starts at 0 except when backtracking)
+            int c = solution.children[sc].index;//The current this.child being tried (starts at 0 except when backtracking)
             while (c + 1 < children)
             {
                 c++;
                 //print("Check c =" + c);
-                if (solution.Contains(c))
+                bool alreadyUsed_c = false;
+                foreach (SolutionBranch sb in solution.children)
+                {
+                    if (sb.index == c)
+                    {
+                        alreadyUsed_c = true;
+                        break;
+                    }
+                }
+                if (alreadyUsed_c)//solution.ContainsIndex(c))
                 {
                     //Already used this child!
                 }
-                else if (childBranches[c].FindSubtree(sub.childBranches[sc], recursionLevel + 1))
+                else if (childBranches[c].FindSubtree(sub.childBranches[sc], out SolutionBranch childSolution, recursionLevel + 1))
                 {
                     //print("c =" + c);
-                    solution[sc] = c;
+                    solution.children[sc].index = c;
+                    solution.children[sc].children = childSolution.children;
+                    //Debug.Log($"c = {c}, childSol.index = {childSolution.index}");//should match?
+                    Debug.Assert(c == childSolution.index);
                     sc++;
                     childfound = true;
                     break;//c = 999;//
@@ -156,7 +227,7 @@ public class Branch : MonoBehaviour
                     return false; // To-Do: add backtracking!
                 else //backtrack
                 {
-                    solution[sc] = -1;
+                    solution.children[sc].index = -1;
                     sc--;
                     //backTracking = true;
                     //next_c = solution[sc] + 1;
@@ -167,8 +238,8 @@ public class Branch : MonoBehaviour
 
         if (sc >= sub.children)
         {
-            if (recursionLevel == 0)//Don't print all the boring sub-solutions
-                print("Sol" + recursionLevel + ": " + String.Join(",", solution));
+            //if (recursionLevel == 0)//Don't print all the boring sub-solutions
+            //print("Sol" + recursionLevel + ": " + String.Join(",", solution));
             //solution found?
             return true;
         }
@@ -181,6 +252,8 @@ public class Branch : MonoBehaviour
         return false;
     }
 
+
+
     void Start()
     {
         if (isRoot)
@@ -190,18 +263,25 @@ public class Branch : MonoBehaviour
         }
     }
 
+
+
     void Update_UNuSED() //debug
     {
         if (UnityEngine.Random.Range(0, 120 * depth) == 1)
             AddBranch();
     }
 
+
+
+
     public bool isRoot;
 
     public bool isRoot_calculated
     {
-        get { return depth == 1; }
+        get { return depth == 1; } // == 0?
     }
+
+
 
 
     public string _name = "?";//only used during caulcuateName?
@@ -293,17 +373,13 @@ public class Branch : MonoBehaviour
             return;
         }
 
-
-
         //children++;
 
         Branch newBranch = Instantiate<Branch>(branchPrefab, this.transform);
 
         //int child_index = children;//index of added child branch  TO-DO: Can change?
         AddChild(newBranch); // determines index
-        float angle = 3.2f * autoAngles[newBranch.index];//Random.Range(-12, 12);// rotation relative to parent, in degrees
-
-
+        float angle = Mathf.Max(3f, 5f - 0.5f * depth) * autoAngles[newBranch.posIndex];//Random.Range(-12, 12);// rotation relative to parent, in degrees
 
         newBranch.gameObject.transform.localScale = Vector2.one * 0.8f;
         newBranch.gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
@@ -321,7 +397,7 @@ public class Branch : MonoBehaviour
         newBranch.parent = this;
         newBranch.treeIndex = this.treeIndex;
         //childArray[child_index] = newBranch;//childBranches.Add(newBranch);
-        newBranch.name = "child " + depth + "-" + index;
+        newBranch.name = "child " + depth + "-" + posIndex;
         //UpdateChildBranches(); // <-- this is in the AddChild function
         //print("WAS: " + newBranch.GetComponent<Branch>().branchPrefab.name);
         newBranch.GetComponent<Branch>().branchPrefab = branchPrefab; // This removes the recursion bug.
@@ -329,7 +405,25 @@ public class Branch : MonoBehaviour
 
     }
 
-    public void UpdateStuff()
+
+
+    public void RemoveChild(Branch child)
+    {
+        childArray[child.posIndex] = null; //Remove(this);
+        UpdateChildBranches();
+        //children--;
+        UpdateStuff();
+        Destroy(child.gameObject);
+    }
+
+    public void RemoveBranch()
+    {
+        parent.RemoveChild(this);
+    }
+
+
+
+    public void UpdateStuff() // Update all required things given that this branch gained/lost a child.
     {
         root.UpdateName();
         GameManager.instance.FindDuplicates();
@@ -345,20 +439,5 @@ public class Branch : MonoBehaviour
             calculateName();
             nameTag.text = displayName;//removes brackets
         }
-    }
-
-    public void RemoveChild(Branch child)
-    {
-        childArray[child.index] = null; //Remove(this);
-        UpdateChildBranches();
-        //children--;
-        root.UpdateName();
-        GameManager.instance.FindDuplicates();
-        Destroy(child.gameObject);
-    }
-
-    public void RemoveBranch()
-    {
-        parent.RemoveChild(this);
     }
 }

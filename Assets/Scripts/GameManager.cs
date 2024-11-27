@@ -40,18 +40,20 @@ public class GameManager : MonoBehaviour
     }
 
     public Branch[] allRoots;// All trees (roots)
+    public TreePanel[] allTrees;
     public List<Branch> allBranches;// All branches
 
     void Start()
     {
         // Set up the treenum variable, so each tree knows where is is
-        for (int i = 0; i < allRoots.Length; i++)
+        for (int i = 0; i < allTrees.Length; i++)
         {
+            allRoots[i] = allTrees[i].root;
             allRoots[i].treeIndex = i;
         }
     }
 
-    public void FindDuplicates()
+    public void FindDuplicates() // Check ALL branches of ALL trees for subtrees within them.
     {
         //print(".");
         //List<string> names_so_far = new List<string>();
@@ -93,10 +95,11 @@ public class GameManager : MonoBehaviour
                         }
 
                         //if (currentName == rootNames[i])
-                        if (check_b.FindSubtree(allRoots[i]))
+                        if (check_b.FindSubtree(allRoots[i], out Branch.SolutionBranch solution))
                         {
                             //print("" + check_b.treeNum + "." + check_b.branchName + " --> tree " + i);
                             _isDupe = true;
+                            print("Solution:" + solution.ToString());
                             //print("contains tree " + i);
                             //Debug.Log("DUPLICATE FOUND: " + currentName);
                         }
