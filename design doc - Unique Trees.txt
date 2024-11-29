@@ -1,0 +1,23 @@
+========= Unique trees =====
+
+
+
+TO DO 
+- change growButton sprites (grey, root)
+- make a greyed-out sprite for all types of roots? (Make sure roots match branches in almost all ways!)
+- Unlock each tree after completing the previous one for the first time. (Before that, stump isn't even there? Or it has no bud?
+- Title panel changes upon completing ALL TREES (except #0). Can minimize panel to find a secret extra (4)-size tree!
+   (Does 4-size tree mechanically work okay? It should!)
+- Panel background variety, allowing sand to match up.
+- multiple branches (some with a bit of green?, randomly select 1
+- some trees not updating!
+
+- track if tree has dupe, no petals if so?
+- sound? growBranch, cutBranch, treeFinished (newUnlock?), 
+
+
+
+  CREDITS
+ - vcbf.ca for cherry blossom info
+ - Tree(3) aka ________?
+ - code and art by me
