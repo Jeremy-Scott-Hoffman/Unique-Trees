@@ -20,19 +20,28 @@ public class Branch : MonoBehaviour
     [SerializeField] Image branchImage;
     public Branch branchPrefab;
     int depth = 1;// Depth 1 = root, 2 = child, 3 = grandchild, etc
+
     public int posIndex;// Where am I in my parent's child array? What angle am I branching at?
     public int listIndex = 0; // Where am I in my parent's list of children? (Used for dupe-finding solutions)
     public int treeIndex;// Which tree is this part of? (currently: matches rootName[] index, e.g. 0, 1, 2, ...)
                          // To do: Make this match the tree's size maybe?
     public int treeGoalSize
     {
-        get { return treeIndex == 0 ? 4 : treeIndex + 3; } //Can change this to +4 reduce game difficulty
+        get
+        {
+            if (treeIndex == 0)
+                return GameManager.Instance.ultraHardMode ? 3 : 4;
+            else
+                return treeIndex + 3;//treeIndex == 0 ? 4 : 
+        } //Can change this to +4 reduce game difficulty
     }
     public int children = 0;
     /*{   //= 0;
         get { return childBranches.Count; }
     }*/
     [SerializeField] Button growBranch_button; // Button to add child
+    [SerializeField] Button growBranch_DEAD_button; // Button to add child
+
     [SerializeField] Button cutBranch_button; // button to remove self
     [SerializeField] Sprite petalSprite;
     [SerializeField] Sprite petalSprite_dupe;
@@ -57,8 +66,8 @@ public class Branch : MonoBehaviour
         }
     }
 
-    public const int MAX_CHILDREN = 12;
-    public const int MAX_DEPTH = 12;
+    public const int MAX_CHILDREN = 14;
+    public const int MAX_DEPTH = 14;
 
     public List<Branch> allSubBranches; // Only used by roots? Excludes self
     [SerializeField] List<Branch> _childBranches = new List<Branch>();
@@ -70,50 +79,80 @@ public class Branch : MonoBehaviour
             _childBranches = value;
         }
     }
-    bool _treeHasDupe;
     public bool TreeHasDupe
     {
         get
         {
-            if (isRoot) return _treeHasDupe;
+            if (tree) return tree.hasDupe;
             else
-                return root._treeHasDupe;
+            {
+                Debug.LogError($"no tree {treeIndex} set.");
+                return false;
+            }
         }
         set
         {
-            if (root)
-                root._treeHasDupe = value;
+            if (tree)
+                tree.hasDupe = value;
             else if (value)
-                Debug.LogError("no root to set as dupe!!");
-            else Debug.Log("no root yet");
+                Debug.LogError("no tree to set as dupe!!");
+            else Debug.Log("no tree yet");
         }
     }
 
     bool isflowering;
-
+    public float randomPetalAngle;//angle for flower petal
+    public void SetGrowButton() // Sets sprite AND clickability!
+    {
+        SetGrowButton(root.allSubBranches.Count == tree.TreeGoalSize());
+    }
     public void SetGrowButton(bool toFlower) // Sets sprite AND clickability!
     {
+
         //print("Set: " + toFlower);
-        growBranch_button.enabled = !toFlower;
         isflowering = toFlower;
+
+        growBranch_DEAD_button.enabled = !toFlower; // You can't grow from flowers
+        growBranch_button.enabled = !toFlower; // Enable last, in case you can't enable inactive objects?
 
         if (toFlower)
         {
-            growBranch_button.GetComponent<Image>().sprite = TreeHasDupe ? petalSprite_dupe : petalSprite;
-            //growBranch_button.transform.localRotation = Quaternion.identity;
-        }
-        else
-        {
-            if (isDupe || isDupeChild)
+            if (TreeHasDupe)
             {
-                growBranch_button.GetComponent<Image>().sprite = growSprite_dupe;//toFlower ? petalSprite_dupe : 
+                growBranch_DEAD_button.gameObject.SetActive(true);
+                growBranch_button.gameObject.SetActive(false);
+                growBranch_DEAD_button.GetComponent<Image>().sprite = petalSprite_dupe;
+                if (!isDupe && !isDupeChild)
+                    growBranch_DEAD_button.gameObject.SetActive(false);//no button at all???
             }
             else
             {
+                growBranch_DEAD_button.gameObject.SetActive(false);
+                growBranch_button.gameObject.SetActive(true);
+                growBranch_button.GetComponent<Image>().sprite = petalSprite;
+            }
+            //growBranch_button.GetComponent<Image>().sprite = TreeHasDupe ? petalSprite_dupe : petalSprite;
+            //growBranch_button.transform.localRotation = Quaternion.identity;
+            growBranch_button.transform.localRotation = Quaternion.Euler(0, 0, randomPetalAngle);
+            growBranch_DEAD_button.transform.localRotation = Quaternion.Euler(0, 0, randomPetalAngle);
+        }
+        else
+        {
+            growBranch_button.transform.localRotation = Quaternion.identity;
+            growBranch_DEAD_button.transform.localRotation = Quaternion.identity;
+            if (isDupe || isDupeChild)
+            {
+                growBranch_DEAD_button.gameObject.SetActive(true);
+                growBranch_button.gameObject.SetActive(false);
+                growBranch_DEAD_button.GetComponent<Image>().sprite = growSprite_dupe;//toFlower ? petalSprite_dupe : 
+            }
+            else
+            {
+                growBranch_DEAD_button.gameObject.SetActive(false);
+                growBranch_button.gameObject.SetActive(true);
                 growBranch_button.GetComponent<Image>().sprite = growSprite;
             }
         }
-
     }
     const bool ROTATE_BUTTONS = false;
     void Update()
@@ -150,7 +189,7 @@ public class Branch : MonoBehaviour
     public void SetAsDupe(SolutionBranch solution, int subTree = -1)//bool _isDupe, 
     {
         isDupe = true;
-        TreeHasDupe = true;
+        root.TreeHasDupe = true;
         //foreach (Branch b in allSubBranches)
         //    b.isDupeChild = true;
         if (solution.childrenExists == false)
@@ -404,16 +443,24 @@ public class Branch : MonoBehaviour
     }
 
 
-
-    void Start()
+    void Awake()
     {
-        if (isRoot)
+        if (isRoot) //Don't do anything at start for non-roots: Let the addBranch function handle it!
+        {
+            root = this;
+        }
+    }
+    public void Start_Manually() // replaced Start()
+    {
+        if (isRoot) //Don't do anything at start for non-roots: Let the addBranch function handle it!
         {
             root = this;
             UpdateName();
             UpdateStuff();//This hopefully causes sprites to update when game is loaded
-            tree.UpdateInfo();
+            //tree.UpdateInfo();
         }
+        else
+            Debug.Log("I'm not a root. -" + name);
     }
 
 
@@ -499,7 +546,7 @@ public class Branch : MonoBehaviour
         return branchName;
     }
 
-    static Vector3 childPosition = new Vector3(0, 63, 0);//Placement of children relative to parent
+    static Vector3 childPosition;//Placement of children relative to parent
 
     // Instead of random angles for branches, use these angles, scaled by a factor of 3 or so.
     float[] autoAngles = new float[] { 5, -8, 14, -16, -2,
@@ -522,24 +569,31 @@ public class Branch : MonoBehaviour
 
         Branch newBranch = Instantiate<Branch>(branchPrefab, this.transform);
         newBranch.root = this.root;//children share same root as parent (een if parent IS root)
-
+        newBranch.tree = this.tree;
         //int child_index = children;//index of added child branch  TO-DO: Can change?
         AddChild(newBranch); // determines index
         float angle = Mathf.Max(3f, 5f - 0.5f * depth) * autoAngles[newBranch.posIndex];//Random.Range(-12, 12);// rotation relative to parent, in degrees
 
         newBranch.gameObject.transform.localScale = Vector2.one * 0.8f;
         newBranch.gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
-        newBranch.growBranch_button.transform.localRotation =
-            Quaternion.Euler(0f, 0f, UnityEngine.Random.Range(-30f, 30f));//Random angle for growButton
+        //newBranch.growBranch_button.transform.localRotation =
+        //    Quaternion.Euler(0f, 0f, UnityEngine.Random.Range(-30f, 30f));//Random angle for growButton
         // ==== BUTTONS =====
         //Deeper red hitboxes are wider but shorter
         //Deeper green hitboxes are larger
         newBranch.cutBranch_button.transform.localScale = new Vector3(Mathf.Pow(1.1f, depth), Mathf.Pow(1f, depth), 1);
         newBranch.growBranch_button.transform.localScale = new Vector3(Mathf.Pow(1.1f, depth), Mathf.Pow(1.1f, depth), 1);
+        newBranch.randomPetalAngle = UnityEngine.Random.Range(-20f, 20f);
 
-
+        childPosition = new Vector3(0, isRoot ? 64 : 61, 0);
         newBranch.gameObject.transform.localPosition = childPosition;
         newBranch.depth = this.depth + 1;
+        if (newBranch.depth == MAX_DEPTH)
+        {
+            newBranch.growBranch_button.image.enabled = false;
+            newBranch.growBranch_DEAD_button.image.enabled = false;
+        }
+
         newBranch.parent = this;
         newBranch.treeIndex = this.treeIndex;
         //childArray[child_index] = newBranch;//childBranches.Add(newBranch);
@@ -551,7 +605,22 @@ public class Branch : MonoBehaviour
 
     }
 
-
+    public void MakeVisible(bool visible)
+    {
+        branchImage.enabled = visible;
+        if (visible)
+        {
+            growBranch_button.image.enabled = true;
+            growBranch_DEAD_button.image.enabled = true;
+            SetGrowButton();
+        }
+        else
+        {
+            //tree.infoText.text = "...";
+            growBranch_button.image.enabled = false;
+            growBranch_DEAD_button.image.enabled = false;
+        }
+    }
 
     public void RemoveChild(Branch child)
     {
@@ -575,7 +644,7 @@ public class Branch : MonoBehaviour
             root = this;
         root.UpdateName();
         GameManager.Instance.FindDuplicates();
-        root.tree.UpdateInfo();    // Call this after doing ALL updateStuff!
+        //root.tree.UpdateInfo();    // Call this after doing ALL updateStuff!
     }
 
     public void UpdateName()

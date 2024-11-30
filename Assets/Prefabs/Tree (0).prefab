@@ -133,8 +133,17 @@ MonoBehaviour:
   root: {fileID: 2437405945234807300}
   numberText: {fileID: 1032399184503805881}
   infoText: {fileID: 1032399185019748579}
+  panelImage: {fileID: 1032399184952609241}
+  desert_day:
+  - {fileID: 21300000, guid: c73445d65cf9ccd4ebd716e5c501c0d2, type: 3}
+  - {fileID: 21300000, guid: 4cac2f5e81eb4624aa30cb93b7310a60, type: 3}
+  desert_night:
+  - {fileID: 21300000, guid: 42c0803b0ff96894fa0d06a1a1072600, type: 3}
+  - {fileID: 21300000, guid: d6db09be969b2564d8402ef36e6770ed, type: 3}
   treeNumber: 0
   status: 0
+  IsUnlocked: 0
+  hasDupe: 0
 --- !u!1 &1032399184952609243
 GameObject:
   m_ObjectHideFlags: 0
@@ -200,7 +209,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: c73445d65cf9ccd4ebd716e5c501c0d2, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 4cac2f5e81eb4624aa30cb93b7310a60, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1

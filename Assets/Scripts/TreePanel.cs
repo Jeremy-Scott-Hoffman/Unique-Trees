@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.PackageManager;
+//using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,17 +10,27 @@ public class TreePanel : MonoBehaviour
     public Branch root;
     public Text numberText;
     public Text infoText;
-    public int treeNumber;//this is probably the max size of the tree (3, 4, ...10)
+    [SerializeField] Image panelImage;
+    [SerializeField] Sprite[] desert_day;
+    [SerializeField] Sprite[] desert_night;
+    public int treeNumber;//the index of the tree (0, 1, 2... 10?)
     public int TreeGoalSize()
     {
         return root.treeGoalSize;
     }
     // Start is called before the first frame update
-    void Start()
+    void Start_DO_NOT_USE()// Let GameManager handle that stuff
     {
-        numberText.text = "(" + TreeGoalSize() + ")";
+        //numberText.text = "(" + TreeGoalSize() + ")";
     }
 
+    public void SetPanel(bool night)
+    {
+        if (night)
+            panelImage.sprite = desert_night[treeNumber % desert_night.Length];
+        else
+            panelImage.sprite = desert_day[treeNumber % desert_day.Length];
+    }
 
     public enum TreeStatus
     {
@@ -33,8 +43,26 @@ public class TreePanel : MonoBehaviour
 
     public TreeStatus status = TreeStatus.empty;
 
-    public void UpdateInfo()
+    public bool IsUnlocked = false;
+    public void Unlock()
     {
+        IsUnlocked = true;
+        root.MakeVisible(true);
+        UpdateInfo();
+    }
+
+    public bool hasDupe = false;
+    public void UpdateInfo() // Updates this one tree?
+    {
+        if (!IsUnlocked)
+        {
+            numberText.text = "";
+            root.MakeVisible(false);
+            return;
+        }
+        //root.MakeVisible(true); //Redundant
+
+
         TreeStatus prevStatus = status;
 
         root.UpdateName(); // this shouldn't be necessary...
@@ -63,27 +91,27 @@ public class TreePanel : MonoBehaviour
             infoText.text = root.TreeHasDupe ? "not unique" : "valid size";
         }
 
-        numberText.text = "(" + TreeGoalSize() + ")";// + Random.Range(0, 10);
+        if (status == TreeStatus.valid)
+            numberText.text = "" + TreeGoalSize() + "";
+        else if (treeSize > 0)
+        {
+            if (GameManager.Instance.SHOW_PROGRESS)
+                numberText.text = $"{treeSize} / " + TreeGoalSize() + "";// + Random.Range(0, 10);
+            else
+                numberText.text = "(" + TreeGoalSize() + ")";
+        }
+        else
+            numberText.text = "(" + TreeGoalSize() + ")";
 
 
         // Updates sprites and such based on status!
         if (true)//status != prevStatus)
         {
-            if (true)//status == TreeStatus.valid) // Valid tree
+
+            root.SetGrowButton(treeSize == TreeGoalSize());//true?
+            foreach (Branch b in root.allSubBranches)
             {
-                root.SetGrowButton(treeSize == TreeGoalSize());//true?
-                foreach (Branch b in root.allSubBranches)
-                {
-                    b.SetGrowButton(treeSize == TreeGoalSize());//true?
-                }
-            }
-            else //if (prevStatus == TreeStatus.valid) // Bad tree
-            {
-                root.SetGrowButton(treeSize == TreeGoalSize());//false?
-                foreach (Branch b in root.allSubBranches)
-                {
-                    b.SetGrowButton(treeSize == TreeGoalSize());//false?
-                }
+                b.SetGrowButton(treeSize == TreeGoalSize());//true?
             }
         }
     }
